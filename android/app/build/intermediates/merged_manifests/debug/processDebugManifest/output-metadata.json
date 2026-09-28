@@ -4,7 +4,7 @@
     "type": "MERGED_MANIFESTS",
     "kind": "Directory"
   },
-  "applicationId": "com.example.calorietracker.sidebyside",
+  "applicationId": "com.example.calorietracker",
   "variantName": "debug",
   "elements": [
     {

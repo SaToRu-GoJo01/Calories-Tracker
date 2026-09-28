@@ -4,7 +4,7 @@
     "type": "LINKED_RESOURCES_BINARY_FORMAT",
     "kind": "Directory"
   },
-  "applicationId": "com.example.calorietracker.sidebyside",
+  "applicationId": "com.example.calorietracker",
   "variantName": "debug",
   "elements": [
     {

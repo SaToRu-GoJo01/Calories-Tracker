@@ -9,7 +9,7 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.example.calorietracker.sidebyside"
+        applicationId = "com.example.calorietracker"
         minSdk = 26
         targetSdk = 36
         versionCode = 2
