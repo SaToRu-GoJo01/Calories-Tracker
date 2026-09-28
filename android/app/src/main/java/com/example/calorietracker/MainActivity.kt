@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,6 +49,7 @@ import com.example.calorietracker.data.FoodEntity
 import com.example.calorietracker.data.FoodLogEntity
 import com.example.calorietracker.data.buildDailyCalories
 import com.example.calorietracker.ui.TrackerViewModel
+import java.time.Instant
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -94,6 +96,7 @@ private fun TrackerApp(viewModel: TrackerViewModel) {
                 Button(onClick = { selectedTab = 0 }) { Text("Overview") }
                 TextButton(onClick = { selectedTab = 1 }) { Text("Foods") }
                 TextButton(onClick = { selectedTab = 2 }) { Text("Goal") }
+                TextButton(onClick = { selectedTab = 3 }) { Text("Insights") }
             }
             when (selectedTab) {
                 0 -> TodayScreen(
@@ -116,7 +119,8 @@ private fun TrackerApp(viewModel: TrackerViewModel) {
                     },
                     onLog = { foodToLog = it },
                 )
-                else -> GoalEstimateScreen()
+                2 -> GoalEstimateScreen()
+                else -> InsightsScreen(allLogs = allLogs)
             }
         }
     }
@@ -199,7 +203,13 @@ private fun TodayScreen(
     val protein = logs.sumOf { it.protein }
     val carbs = logs.sumOf { it.carbs }
     val fat = logs.sumOf { it.fat }
-    var chartRange by rememberSaveable { mutableIntStateOf(0) }
+    val chartData = buildDailyCalories(allLogs, days = 7)
+    val maxValue = chartData.maxOfOrNull { it.totalCalories }?.coerceAtLeast(1.0) ?: 1.0
+    val zone = java.time.ZoneId.systemDefault()
+    var selectedDate by rememberSaveable { mutableStateOf<java.time.LocalDate?>(null) }
+    val selectedDayEntries = selectedDate?.let { date ->
+        allLogs.filter { Instant.ofEpochMilli(it.loggedAt).atZone(zone).toLocalDate().isEqual(date) }
+    } ?: emptyList()
 
     LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
@@ -217,29 +227,12 @@ private fun TodayScreen(
         }
 
         item {
-            val chartData = if (chartRange == 0) {
-                buildDailyCalories(allLogs, days = 7)
-            } else {
-                buildDailyCalories(allLogs, days = 30)
-            }
-            val maxValue = chartData.maxOfOrNull { it.totalCalories }?.coerceAtLeast(1.0) ?: 1.0
-
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
             ) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text("Calorie trend", style = MaterialTheme.typography.titleLarge)
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            TextButton(onClick = { chartRange = 0 }) { Text("Week") }
-                            TextButton(onClick = { chartRange = 1 }) { Text("Month") }
-                        }
-                    }
+                    Text("Weekly calorie trend", style = MaterialTheme.typography.titleLarge)
                     Row(
                         modifier = Modifier.fillMaxWidth().height(180.dp),
                         verticalAlignment = Alignment.Bottom,
@@ -247,6 +240,7 @@ private fun TodayScreen(
                     ) {
                         chartData.forEach { item ->
                             val barHeight = ((item.totalCalories / maxValue) * 150.0).coerceAtLeast(8.0)
+                            val isSelected = selectedDate == item.date
                             Column(
                                 modifier = Modifier.weight(1f),
                                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -257,19 +251,42 @@ private fun TodayScreen(
                                         .fillMaxWidth()
                                         .height(barHeight.dp)
                                         .background(
-                                            color = if (item.label == "Today" || item.label == "Yesterday") {
-                                                MaterialTheme.colorScheme.primary
-                                            } else {
-                                                MaterialTheme.colorScheme.secondary
-                                            },
+                                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
                                             shape = RoundedCornerShape(10.dp),
-                                        ),
+                                        )
+                                        .clickable { selectedDate = if (isSelected) null else item.date },
                                 )
                                 Spacer(Modifier.height(6.dp))
                                 Text(
                                     text = item.label.take(3),
                                     style = MaterialTheme.typography.labelSmall,
                                 )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (selectedDate != null) {
+            item {
+                Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp)) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "${selectedDate!!.dayOfMonth}/${selectedDate!!.monthValue}/${selectedDate!!.year}",
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        val selectedCalories = selectedDayEntries.sumOf { it.calories }
+                        val selectedProtein = selectedDayEntries.sumOf { it.protein }
+                        val selectedCarbs = selectedDayEntries.sumOf { it.carbs }
+                        val selectedFat = selectedDayEntries.sumOf { it.fat }
+                        Text("${selectedCalories.roundToInt()} kcal total")
+                        Text("P ${selectedProtein.oneDecimal()} g · C ${selectedCarbs.oneDecimal()} g · F ${selectedFat.oneDecimal()} g")
+                        if (selectedDayEntries.isEmpty()) {
+                            Text("No meals logged for this day.")
+                        } else {
+                            selectedDayEntries.sortedByDescending { it.loggedAt }.forEach { log ->
+                                Text("• ${log.foodNameSnapshot} · ${log.meal} · ${log.calories.roundToInt()} kcal")
                             }
                         }
                     }
@@ -311,6 +328,99 @@ private fun TodayScreen(
             }
         }
     }
+}
+
+@Composable
+private fun InsightsScreen(allLogs: List<FoodLogEntity>) {
+    var selectedPeriod by rememberSaveable { mutableStateOf("Week") }
+    val periodSummary = averageMacroSummary(allLogs, selectedPeriod)
+    val scrollState = androidx.compose.foundation.rememberScrollState()
+
+    Column(
+        modifier = Modifier.fillMaxSize().verticalScroll(scrollState),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text("Macro insights", style = MaterialTheme.typography.headlineSmall)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("Week", "Month", "Year", "Lifetime").forEach { period ->
+                val selected = selectedPeriod == period
+                Button(
+                    onClick = { selectedPeriod = period },
+                    enabled = true,
+                ) {
+                    Text(period)
+                }
+            }
+        }
+
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Average per day", style = MaterialTheme.typography.titleLarge)
+                StatRow(label = "Calories", value = "${periodSummary.averageCalories.roundToInt()} kcal")
+                StatRow(label = "Protein", value = "${periodSummary.averageProtein.oneDecimal()} g")
+                StatRow(label = "Carbs", value = "${periodSummary.averageCarbs.oneDecimal()} g")
+                StatRow(label = "Fat", value = "${periodSummary.averageFat.oneDecimal()} g")
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(label)
+        Text(value, style = MaterialTheme.typography.titleMedium)
+    }
+}
+
+private data class MacroSummary(
+    val averageCalories: Double,
+    val averageProtein: Double,
+    val averageCarbs: Double,
+    val averageFat: Double,
+)
+
+private fun averageMacroSummary(logs: List<FoodLogEntity>, selectedPeriod: String): MacroSummary {
+    val zone = java.time.ZoneId.systemDefault()
+    val now = java.time.Instant.now().atZone(zone).toLocalDate()
+
+    val startDate = when (selectedPeriod) {
+        "Week" -> now.minusDays(6)
+        "Month" -> now.minusDays(29)
+        "Year" -> now.minusDays(364)
+        else -> {
+            val earliest = logs.minOfOrNull { it.loggedAt } ?: System.currentTimeMillis()
+            Instant.ofEpochMilli(earliest).atZone(zone).toLocalDate()
+        }
+    }
+
+    val filteredLogs = logs.filter { log ->
+        val logDate = Instant.ofEpochMilli(log.loggedAt).atZone(zone).toLocalDate()
+        logDate.isAfter(startDate.minusDays(1)) || logDate.isEqual(startDate)
+    }
+
+    val dailyTotals = mutableMapOf<java.time.LocalDate, Double>()
+    val proteinTotals = mutableMapOf<java.time.LocalDate, Double>()
+    val carbsTotals = mutableMapOf<java.time.LocalDate, Double>()
+    val fatTotals = mutableMapOf<java.time.LocalDate, Double>()
+
+    filteredLogs.forEach { log ->
+        val day = Instant.ofEpochMilli(log.loggedAt).atZone(zone).toLocalDate()
+        dailyTotals[day] = dailyTotals.getOrDefault(day, 0.0) + log.calories
+        proteinTotals[day] = proteinTotals.getOrDefault(day, 0.0) + log.protein
+        carbsTotals[day] = carbsTotals.getOrDefault(day, 0.0) + log.carbs
+        fatTotals[day] = fatTotals.getOrDefault(day, 0.0) + log.fat
+    }
+
+    return MacroSummary(
+        averageCalories = if (dailyTotals.isEmpty()) 0.0 else dailyTotals.values.average(),
+        averageProtein = if (proteinTotals.isEmpty()) 0.0 else proteinTotals.values.average(),
+        averageCarbs = if (carbsTotals.isEmpty()) 0.0 else carbsTotals.values.average(),
+        averageFat = if (fatTotals.isEmpty()) 0.0 else fatTotals.values.average(),
+    )
 }
 
 @Composable
