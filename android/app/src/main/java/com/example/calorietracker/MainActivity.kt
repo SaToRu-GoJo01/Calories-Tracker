@@ -3,24 +3,26 @@ package com.example.calorietracker
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.lifecycle.ViewModelProvider
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -28,22 +30,26 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import kotlin.math.roundToInt
+import androidx.lifecycle.ViewModelProvider
 import com.example.calorietracker.data.FoodEntity
 import com.example.calorietracker.data.FoodLogEntity
+import com.example.calorietracker.data.buildDailyCalories
 import com.example.calorietracker.ui.TrackerViewModel
 import java.util.Locale
+import kotlin.math.roundToInt
 
 class MainActivity : ComponentActivity() {
     private val trackerViewModel: TrackerViewModel by lazy {
@@ -65,25 +71,37 @@ class MainActivity : ComponentActivity() {
 private fun TrackerApp(viewModel: TrackerViewModel) {
     val foods by viewModel.foods.collectAsState()
     val logs by viewModel.todayLogs.collectAsState()
-    var selectedTab by rememberSaveable { mutableStateOf(0) }
+    val allLogs by viewModel.allLogs.collectAsState()
+    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     var search by rememberSaveable { mutableStateOf("") }
     var showFoodEditor by remember { mutableStateOf(false) }
     var foodToEdit by remember { mutableStateOf<FoodEntity?>(null) }
     var foodToLog by remember { mutableStateOf<FoodEntity?>(null) }
     var logToEdit by remember { mutableStateOf<FoodLogEntity?>(null) }
 
-    Scaffold(topBar = { TopAppBar(title = { Text("Calorie Tracker · Offline") }) }) { insets ->
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Calorie Tracker") },
+            )
+        },
+    ) { insets ->
         Column(
             modifier = Modifier.fillMaxSize().padding(insets).padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { selectedTab = 0 }) { Text("Today") }
+                Button(onClick = { selectedTab = 0 }) { Text("Overview") }
                 TextButton(onClick = { selectedTab = 1 }) { Text("Foods") }
                 TextButton(onClick = { selectedTab = 2 }) { Text("Goal") }
             }
-            Spacer(Modifier.height(12.dp))
             when (selectedTab) {
-                0 -> TodayScreen(logs = logs, onDelete = viewModel::deleteLog, onEdit = { logToEdit = it })
+                0 -> TodayScreen(
+                    logs = logs,
+                    allLogs = allLogs,
+                    onDelete = viewModel::deleteLog,
+                    onEdit = { logToEdit = it },
+                )
                 1 -> FoodListScreen(
                     foods = foods,
                     search = search,
@@ -135,39 +153,45 @@ private fun GoalEstimateScreen() {
     val goal = goalWeight.toDoubleOrNull()
     val days = targetDays.toIntOrNull()
 
-    Text("Goal planning", style = MaterialTheme.typography.headlineSmall)
-    Text("Enter weights in kilograms and an optional number of days.")
-    Spacer(Modifier.height(8.dp))
-    MacroField("Current weight (kg)", currentWeight) { currentWeight = it }
-    MacroField("Goal weight (kg)", goalWeight) { goalWeight = it }
-    MacroField("Days to goal", targetDays) { targetDays = it }
-    Spacer(Modifier.height(12.dp))
-    when {
-        current == null || goal == null || days == null || !current.isFinite() || !goal.isFinite() || current <= goal || goal < 0 || days <= 0 ->
-            Text("Enter a current weight greater than your goal and a positive number of days.")
-        (current - goal) / days * 7.0 > 0.9 ->
-            Text("This target implies more than about 0.9 kg per week. No energy-gap estimate is shown; consider a slower goal and seek qualified health advice.", color = MaterialTheme.colorScheme.error)
-        else -> {
-            val approximateDailyGap = ((current - goal) * 7_700.0 / days).roundToInt()
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp)) {
-                    Text("Rough energy-gap arithmetic", style = MaterialTheme.typography.titleLarge)
-                    Text("About $approximateDailyGap kcal/day")
-                    Text("This is a static planning estimate, not a forecast or a number of exercise calories you should burn. Any energy gap may come from food intake and activity together.")
+    val scrollState = androidx.compose.foundation.rememberScrollState()
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(scrollState),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text("Goal planning", style = MaterialTheme.typography.headlineSmall)
+        Text("Enter weights in kilograms and an optional number of days.")
+        MacroField("Current weight (kg)", currentWeight) { currentWeight = it }
+        MacroField("Goal weight (kg)", goalWeight) { goalWeight = it }
+        MacroField("Days to goal", targetDays) { targetDays = it }
+        when {
+            current == null || goal == null || days == null || !current.isFinite() || !goal.isFinite() || current <= goal || goal < 0 || days <= 0 ->
+                Text("Enter a current weight greater than your goal and a positive number of days.")
+            (current - goal) / days * 7.0 > 0.9 ->
+                Text("This target implies more than about 0.9 kg per week. No energy-gap estimate is shown; consider a slower goal and seek qualified health advice.", color = MaterialTheme.colorScheme.error)
+            else -> {
+                val approximateDailyGap = ((current - goal) * 7_700.0 / days).roundToInt()
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text("Rough energy-gap arithmetic", style = MaterialTheme.typography.titleLarge)
+                        Text("About $approximateDailyGap kcal/day")
+                        Text("This is a static planning estimate, not a forecast or a number of exercise calories you should burn. Any energy gap may come from food intake and activity together.")
+                    }
                 }
             }
         }
+        Text(
+            "This simple estimate does not account for age, height, sex, health conditions, normal activity or changing metabolism. It is intended only for adults; do not use for anyone under 18, during pregnancy/breastfeeding, or with a relevant medical condition. Ask a qualified health professional for personal advice.",
+            style = MaterialTheme.typography.bodySmall,
+        )
     }
-    Spacer(Modifier.height(12.dp))
-    Text(
-        "This simple estimate does not account for age, height, sex, health conditions, normal activity or changing metabolism. It is intended only for adults; do not use for anyone under 18, during pregnancy/breastfeeding, or with a relevant medical condition. Ask a qualified health professional for personal advice.",
-        style = MaterialTheme.typography.bodySmall,
-    )
 }
 
 @Composable
 private fun TodayScreen(
     logs: List<FoodLogEntity>,
+    allLogs: List<FoodLogEntity>,
     onDelete: (FoodLogEntity) -> Unit,
     onEdit: (FoodLogEntity) -> Unit,
 ) {
@@ -175,29 +199,105 @@ private fun TodayScreen(
     val protein = logs.sumOf { it.protein }
     val carbs = logs.sumOf { it.carbs }
     val fat = logs.sumOf { it.fat }
+    var chartRange by rememberSaveable { mutableIntStateOf(0) }
 
-    Text("Today's intake", style = MaterialTheme.typography.headlineSmall)
-    Spacer(Modifier.height(8.dp))
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp)) {
-            Text("${calories.roundToInt()} kcal", style = MaterialTheme.typography.headlineMedium)
-            Text("Protein ${protein.oneDecimal()} g  ·  Carbs ${carbs.oneDecimal()} g  ·  Fat ${fat.oneDecimal()} g")
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+            ) {
+                Column(Modifier.padding(20.dp)) {
+                    Text("Today", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                    Text("${calories.roundToInt()} kcal", style = MaterialTheme.typography.headlineMedium)
+                    Spacer(Modifier.height(6.dp))
+                    Text("Protein ${protein.oneDecimal()} g · Carbs ${carbs.oneDecimal()} g · Fat ${fat.oneDecimal()} g")
+                }
+            }
         }
-    }
-    Spacer(Modifier.height(16.dp))
-    Text("Food diary", style = MaterialTheme.typography.titleLarge)
-    Spacer(Modifier.height(6.dp))
-    if (logs.isEmpty()) {
-        Text("Nothing logged yet. Open Indian foods to add your first item.")
-    } else {
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(logs, key = { it.id }) { log ->
-                Card(Modifier.fillMaxWidth()) {
+
+        item {
+            val chartData = if (chartRange == 0) {
+                buildDailyCalories(allLogs, days = 7)
+            } else {
+                buildDailyCalories(allLogs, days = 30)
+            }
+            val maxValue = chartData.maxOfOrNull { it.totalCalories }?.coerceAtLeast(1.0) ?: 1.0
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+            ) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(12.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("Calorie trend", style = MaterialTheme.typography.titleLarge)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextButton(onClick = { chartRange = 0 }) { Text("Week") }
+                            TextButton(onClick = { chartRange = 1 }) { Text("Month") }
+                        }
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth().height(180.dp),
+                        verticalAlignment = Alignment.Bottom,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        chartData.forEach { item ->
+                            val barHeight = ((item.totalCalories / maxValue) * 150.0).coerceAtLeast(8.0)
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Bottom,
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(barHeight.dp)
+                                        .background(
+                                            color = if (item.label == "Today" || item.label == "Yesterday") {
+                                                MaterialTheme.colorScheme.primary
+                                            } else {
+                                                MaterialTheme.colorScheme.secondary
+                                            },
+                                            shape = RoundedCornerShape(10.dp),
+                                        ),
+                                )
+                                Spacer(Modifier.height(6.dp))
+                                Text(
+                                    text = item.label.take(3),
+                                    style = MaterialTheme.typography.labelSmall,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        item {
+            Text("Food diary", style = MaterialTheme.typography.titleLarge)
+        }
+
+        if (logs.isEmpty()) {
+            item {
+                Card(Modifier.fillMaxWidth()) {
+                    Text(
+                        modifier = Modifier.padding(16.dp),
+                        text = "Nothing logged yet. Open Foods and add your first item.",
+                    )
+                }
+            }
+        } else {
+            items(logs, key = { it.id }) { log ->
+                Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(14.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-                        Column(Modifier.weight(1f)) {
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(log.foodNameSnapshot, style = MaterialTheme.typography.titleMedium)
                             Text("${log.amountGrams.oneDecimal()} g · ${log.meal} · ${log.calories.roundToInt()} kcal")
                             Text("P ${log.protein.oneDecimal()} g · C ${log.carbs.oneDecimal()} g · F ${log.fat.oneDecimal()} g")
@@ -222,31 +322,34 @@ private fun FoodListScreen(
     onEdit: (FoodEntity) -> Unit,
     onLog: (FoodEntity) -> Unit,
 ) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text("Foods stored on this device", style = MaterialTheme.typography.titleLarge)
-        Button(onClick = onAddFood) { Text("Add food") }
-    }
-    Text("Starter nutrition values are estimates. Adjust them for your recipe or food label.")
-    Spacer(Modifier.height(8.dp))
-    OutlinedTextField(
-        value = search,
-        onValueChange = onSearchChange,
-        modifier = Modifier.fillMaxWidth(),
-        label = { Text("Search foods") },
-        singleLine = true,
-    )
-    Spacer(Modifier.height(8.dp))
-    val matches = foods.filter { it.name.contains(search.trim(), ignoreCase = true) }
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(matches, key = { it.id }) { food ->
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(12.dp)) {
-                    Text(food.name, style = MaterialTheme.typography.titleMedium)
-                    Text("Per 100 g: ${food.caloriesPer100g.roundToInt()} kcal · P ${food.proteinPer100g.oneDecimal()} g · C ${food.carbsPer100g.oneDecimal()} g · F ${food.fatPer100g.oneDecimal()} g")
-                    Text(food.sourceNote, style = MaterialTheme.typography.bodySmall)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = { onLog(food) }) { Text("Log amount") }
-                        OutlinedButton(onClick = { onEdit(food) }) { Text("Edit macros") }
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("Foods stored on this device", style = MaterialTheme.typography.titleLarge)
+            Button(onClick = onAddFood) { Text("Add food") }
+        }
+        Text("Starter nutrition values are estimates. Adjust them for your recipe or food label.")
+        OutlinedTextField(
+            value = search,
+            onValueChange = onSearchChange,
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Search foods") },
+            singleLine = true,
+        )
+        val matches = foods.filter { it.name.contains(search.trim(), ignoreCase = true) }
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(matches, key = { it.id }) { food ->
+                Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp)) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(food.name, style = MaterialTheme.typography.titleMedium)
+                        Text("Per 100 g: ${food.caloriesPer100g.roundToInt()} kcal · P ${food.proteinPer100g.oneDecimal()} g · C ${food.carbsPer100g.oneDecimal()} g · F ${food.fatPer100g.oneDecimal()} g")
+                        Text(food.sourceNote, style = MaterialTheme.typography.bodySmall)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(onClick = { onLog(food) }) { Text("Log amount") }
+                            OutlinedButton(onClick = { onEdit(food) }) { Text("Edit macros") }
+                        }
                     }
                 }
             }
@@ -268,12 +371,13 @@ private fun FoodEditorDialog(
     var fat by remember(food?.id) { mutableStateOf(food?.fatPer100g?.toString().orEmpty()) }
     var error by remember { mutableStateOf(false) }
 
+    val scrollState = androidx.compose.foundation.rememberScrollState()
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (food == null) "Add a local food" else "Edit food macros") },
         text = {
             Column(
-                modifier = Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState()),
+                modifier = Modifier.heightIn(max = 420.dp).verticalScroll(scrollState),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 OutlinedTextField(name, { name = it }, label = { Text("Food name") }, singleLine = true)

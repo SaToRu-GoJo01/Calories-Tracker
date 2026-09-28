@@ -16,6 +16,7 @@ class TrackerViewModel(application: Application) : AndroidViewModel(application)
 
     val foods = repository.foods.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val todayLogs = repository.todayLogs().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val allLogs = repository.allLogs().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     init {
         viewModelScope.launch { repository.seedIfEmpty() }

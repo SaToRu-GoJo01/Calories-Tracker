@@ -258,6 +258,54 @@ public class FoodDao_Impl(
     }
   }
 
+  public override fun observeAllLogs(): Flow<List<FoodLogEntity>> {
+    val _sql: String = "SELECT * FROM food_logs ORDER BY loggedAt DESC"
+    return createFlow(__db, false, arrayOf("food_logs")) { _connection ->
+      val _stmt: SQLiteStatement = _connection.prepare(_sql)
+      try {
+        val _columnIndexOfId: Int = getColumnIndexOrThrow(_stmt, "id")
+        val _columnIndexOfFoodId: Int = getColumnIndexOrThrow(_stmt, "foodId")
+        val _columnIndexOfFoodNameSnapshot: Int = getColumnIndexOrThrow(_stmt, "foodNameSnapshot")
+        val _columnIndexOfAmountGrams: Int = getColumnIndexOrThrow(_stmt, "amountGrams")
+        val _columnIndexOfCalories: Int = getColumnIndexOrThrow(_stmt, "calories")
+        val _columnIndexOfProtein: Int = getColumnIndexOrThrow(_stmt, "protein")
+        val _columnIndexOfCarbs: Int = getColumnIndexOrThrow(_stmt, "carbs")
+        val _columnIndexOfFat: Int = getColumnIndexOrThrow(_stmt, "fat")
+        val _columnIndexOfMeal: Int = getColumnIndexOrThrow(_stmt, "meal")
+        val _columnIndexOfLoggedAt: Int = getColumnIndexOrThrow(_stmt, "loggedAt")
+        val _result: MutableList<FoodLogEntity> = mutableListOf()
+        while (_stmt.step()) {
+          val _item: FoodLogEntity
+          val _tmpId: Long
+          _tmpId = _stmt.getLong(_columnIndexOfId)
+          val _tmpFoodId: Long
+          _tmpFoodId = _stmt.getLong(_columnIndexOfFoodId)
+          val _tmpFoodNameSnapshot: String
+          _tmpFoodNameSnapshot = _stmt.getText(_columnIndexOfFoodNameSnapshot)
+          val _tmpAmountGrams: Double
+          _tmpAmountGrams = _stmt.getDouble(_columnIndexOfAmountGrams)
+          val _tmpCalories: Double
+          _tmpCalories = _stmt.getDouble(_columnIndexOfCalories)
+          val _tmpProtein: Double
+          _tmpProtein = _stmt.getDouble(_columnIndexOfProtein)
+          val _tmpCarbs: Double
+          _tmpCarbs = _stmt.getDouble(_columnIndexOfCarbs)
+          val _tmpFat: Double
+          _tmpFat = _stmt.getDouble(_columnIndexOfFat)
+          val _tmpMeal: String
+          _tmpMeal = _stmt.getText(_columnIndexOfMeal)
+          val _tmpLoggedAt: Long
+          _tmpLoggedAt = _stmt.getLong(_columnIndexOfLoggedAt)
+          _item = FoodLogEntity(_tmpId,_tmpFoodId,_tmpFoodNameSnapshot,_tmpAmountGrams,_tmpCalories,_tmpProtein,_tmpCarbs,_tmpFat,_tmpMeal,_tmpLoggedAt)
+          _result.add(_item)
+        }
+        _result
+      } finally {
+        _stmt.close()
+      }
+    }
+  }
+
   public companion object {
     public fun getRequiredConverters(): List<KClass<*>> = emptyList()
   }

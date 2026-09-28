@@ -18,6 +18,8 @@ class FoodRepository(private val dao: FoodDao) {
         return dao.observeLogsForDay(start.timeInMillis, end.timeInMillis)
     }
 
+    fun allLogs(): Flow<List<FoodLogEntity>> = dao.observeAllLogs()
+
     suspend fun seedIfEmpty() {
         if (dao.foodCount() == 0) dao.insertFoods(StarterFoods.all)
     }

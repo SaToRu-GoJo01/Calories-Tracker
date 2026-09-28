@@ -60,6 +60,9 @@ interface FoodDao {
     @Query("SELECT * FROM food_logs WHERE loggedAt >= :startMillis AND loggedAt < :endMillis ORDER BY loggedAt DESC")
     fun observeLogsForDay(startMillis: Long, endMillis: Long): Flow<List<FoodLogEntity>>
 
+    @Query("SELECT * FROM food_logs ORDER BY loggedAt DESC")
+    fun observeAllLogs(): Flow<List<FoodLogEntity>>
+
     @Insert
     suspend fun insertLog(log: FoodLogEntity)
 
