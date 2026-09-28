@@ -95,7 +95,7 @@ MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] /home/codes
 	android:supportsRtl
 		ADDED from /workspaces/Calories-Tracker/android/app/src/main/AndroidManifest.xml:5:9-35
 	android:label
-		ADDED from /workspaces/Calories-Tracker/android/app/src/main/AndroidManifest.xml:4:9-40
+		ADDED from /workspaces/Calories-Tracker/android/app/src/main/AndroidManifest.xml:4:9-53
 	android:allowBackup
 		ADDED from /workspaces/Calories-Tracker/android/app/src/main/AndroidManifest.xml:3:9-36
 	android:theme
@@ -286,7 +286,7 @@ ADDED from [androidx.core:core:1.18.0] /home/codespace/.gradle/caches/9.7.1/tran
 		ADDED from [androidx.core:core:1.18.0] /home/codespace/.gradle/caches/9.7.1/transforms/e96b894a05cb30e0451a38f82b455c29/transformed/core-1.18.0/AndroidManifest.xml:24:9-44
 	android:name
 		ADDED from [androidx.core:core:1.18.0] /home/codespace/.gradle/caches/9.7.1/transforms/e96b894a05cb30e0451a38f82b455c29/transformed/core-1.18.0/AndroidManifest.xml:23:9-81
-permission#com.example.calorietracker.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+permission#com.example.calorietracker.sidebyside.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
 ADDED from [androidx.core:core:1.18.0] /home/codespace/.gradle/caches/9.7.1/transforms/e96b894a05cb30e0451a38f82b455c29/transformed/core-1.18.0/AndroidManifest.xml:22:5-24:47
 	android:protectionLevel
 		ADDED from [androidx.core:core:1.18.0] /home/codespace/.gradle/caches/9.7.1/transforms/e96b894a05cb30e0451a38f82b455c29/transformed/core-1.18.0/AndroidManifest.xml:24:9-44
@@ -296,7 +296,7 @@ uses-permission#${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
 ADDED from [androidx.core:core:1.18.0] /home/codespace/.gradle/caches/9.7.1/transforms/e96b894a05cb30e0451a38f82b455c29/transformed/core-1.18.0/AndroidManifest.xml:26:5-97
 	android:name
 		ADDED from [androidx.core:core:1.18.0] /home/codespace/.gradle/caches/9.7.1/transforms/e96b894a05cb30e0451a38f82b455c29/transformed/core-1.18.0/AndroidManifest.xml:26:22-94
-uses-permission#com.example.calorietracker.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+uses-permission#com.example.calorietracker.sidebyside.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
 ADDED from [androidx.core:core:1.18.0] /home/codespace/.gradle/caches/9.7.1/transforms/e96b894a05cb30e0451a38f82b455c29/transformed/core-1.18.0/AndroidManifest.xml:26:5-97
 	android:name
 		ADDED from [androidx.core:core:1.18.0] /home/codespace/.gradle/caches/9.7.1/transforms/e96b894a05cb30e0451a38f82b455c29/transformed/core-1.18.0/AndroidManifest.xml:26:22-94

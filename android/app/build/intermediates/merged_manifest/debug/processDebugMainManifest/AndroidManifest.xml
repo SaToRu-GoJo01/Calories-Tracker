@@ -1,25 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.calorietracker"
-    android:versionCode="1"
-    android:versionName="1.0.0" >
+    package="com.example.calorietracker.sidebyside"
+    android:versionCode="2"
+    android:versionName="1.0.1" >
 
     <uses-sdk
         android:minSdkVersion="26"
         android:targetSdkVersion="36" />
 
     <permission
-        android:name="com.example.calorietracker.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+        android:name="com.example.calorietracker.sidebyside.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
         android:protectionLevel="signature" />
 
-    <uses-permission android:name="com.example.calorietracker.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+    <uses-permission android:name="com.example.calorietracker.sidebyside.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
 
     <application
         android:allowBackup="false"
         android:appComponentFactory="androidx.core.app.CoreComponentFactory"
         android:debuggable="true"
         android:extractNativeLibs="false"
-        android:label="Calorie Tracker"
+        android:label="Calorie Tracker Side-by-Side"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar" >
         <activity
@@ -37,7 +37,7 @@
 
         <provider
             android:name="androidx.startup.InitializationProvider"
-            android:authorities="com.example.calorietracker.androidx-startup"
+            android:authorities="com.example.calorietracker.sidebyside.androidx-startup"
             android:exported="false" >
             <meta-data
                 android:name="androidx.emoji2.text.EmojiCompatInitializer"
